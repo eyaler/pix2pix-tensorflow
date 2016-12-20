@@ -33,6 +33,7 @@ parser.add_argument('--checkpoint_dir', dest='checkpoint_dir', default='./checkp
 parser.add_argument('--sample_dir', dest='sample_dir', default='./sample', help='sample are saved here')
 parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test sample are saved here')
 parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, help='weight on L1 term in objective')
+parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
 
 args = parser.parse_args()
 
@@ -47,7 +48,7 @@ def main(_):
     with tf.Session() as sess:
         model = pix2pix(sess, image_size=args.fine_size, batch_size=args.batch_size,
                         output_size=args.fine_size, dataset_name=args.dataset_name,
-                        checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir)
+                        checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir, rotations=args.rotations)
 
         if args.phase == 'train':
             model.train(args)
