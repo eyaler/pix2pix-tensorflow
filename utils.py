@@ -17,15 +17,15 @@ get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 # -----------------------------
 # new added functions for pix2pix
 
-def load_data(image_path, flip=True, rot=False, is_test=False):
+def load_data(image_path, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
     img_A, img_B = load_image(image_path)
-    img_A, img_B = preprocess_A_and_B(img_A, img_B, flip=flip, rot=rot, is_test=is_test)
+    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, flip=flip, rot=rot, is_test=is_test)
 
     img_A = img_A/127.5 - 1.
     img_B = img_B/127.5 - 1.
 
     img_AB = np.concatenate((img_A, img_B), axis=2)
-    # img_AB shape: (fine_size, fine_size, input_c_dim + output_c_dim)
+    # img_AB shape: (fine_size, fine_size or fine_size*input_aspect_ratio, input_c_dim + output_c_dim)
     return img_AB
 
 def load_image(image_path):
@@ -37,18 +37,21 @@ def load_image(image_path):
 
     return img_A, img_B
 
-def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, flip=True, rot=False, is_test=False):
+def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
+    ratio = 1
+    if aspect:
+        ratio = float(img_A.shape[0])/img_A.shape[1]
     if is_test:
-        img_A = scipy.misc.imresize(img_A, [fine_size, fine_size])
-        img_B = scipy.misc.imresize(img_B, [fine_size, fine_size])
+        img_A = scipy.misc.imresize(img_A, [fine_size, int(fine_size*ratio)])
+        img_B = scipy.misc.imresize(img_B, [fine_size, int(fine_size*ratio)])
     else:
-        img_A = scipy.misc.imresize(img_A, [load_size, load_size])
-        img_B = scipy.misc.imresize(img_B, [load_size, load_size])
+        img_A = scipy.misc.imresize(img_A, [load_size, int(load_size*ratio)])
+        img_B = scipy.misc.imresize(img_B, [load_size, int(load_size*ratio)])
 
-        h1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
+        h1 = int(np.ceil(np.random.uniform(1e-2, int((load_size-fine_size)*ratio))))
         w1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
-        img_A = img_A[h1:h1+fine_size, w1:w1+fine_size]
-        img_B = img_B[h1:h1+fine_size, w1:w1+fine_size]
+        img_A = img_A[h1:h1+int(fine_size*ratio), w1:w1+fine_size]
+        img_B = img_B[h1:h1+int(fine_size*ratio), w1:w1+fine_size]
 
         if flip and np.random.random() > 0.5:
             img_A = np.fliplr(img_A)
@@ -63,9 +66,6 @@ def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, flip=True, ro
     return img_A, img_B
 
 # -----------------------------
-
-def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale = False):
-    return transform(imread(image_path, is_grayscale), image_size, is_crop, resize_w)
 
 def save_images(images, size, image_path):
     return imsave(inverse_transform(images), size, image_path)
@@ -91,14 +91,6 @@ def merge(images, size):
 
 def imsave(images, size, path):
     return scipy.misc.imsave(path, merge(images, size))
-
-def transform(image, npx=64, is_crop=True, resize_w=64):
-    # npx : # of pixels width/height of image
-    if is_crop:
-        cropped_image = center_crop(image, npx, resize_w=resize_w)
-    else:
-        cropped_image = image
-    return np.array(cropped_image)/127.5 - 1.
 
 def inverse_transform(images):
     return (images+1.)/2.

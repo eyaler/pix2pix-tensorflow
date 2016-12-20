@@ -8,7 +8,7 @@ import tensorflow as tf
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--dataset_name', dest='dataset_name', default='facades', help='name of the dataset')
-parser.add_argument('--epoch', dest='epoch', type=int, default=200, help='# of epoch')
+parser.add_argument('--epochs', dest='epochs', type=int, default=200, help='# of epochs')
 parser.add_argument('--batch_size', dest='batch_size', type=int, default=1, help='# images in batch')
 parser.add_argument('--train_size', dest='train_size', type=int, default=1e8, help='# images used to train')
 parser.add_argument('--load_size', dest='load_size', type=int, default=286, help='scale images to this size')
@@ -20,7 +20,7 @@ parser.add_argument('--output_nc', dest='output_nc', type=int, default=3, help='
 parser.add_argument('--niter', dest='niter', type=int, default=200, help='# of iter at starting learning rate')
 parser.add_argument('--lr', dest='lr', type=float, default=0.0002, help='initial learning rate for adam')
 parser.add_argument('--beta1', dest='beta1', type=float, default=0.5, help='momentum term of adam')
-parser.add_argument('--flip', dest='flip', type=bool, default=True, help='if flip the images for data argumentation')
+parser.add_argument('--flips', dest='flips', type=bool, default=True, help='use flips for data argumentation')
 parser.add_argument('--which_direction', dest='which_direction', default='AtoB', help='AtoB or BtoA')
 parser.add_argument('--phase', dest='phase', default='train', help='train, test')
 parser.add_argument('--save_epoch_freq', dest='save_epoch_freq', type=int, default=50, help='save a model every save_epoch_freq epochs (does not overwrite previously saved models)')
@@ -34,6 +34,7 @@ parser.add_argument('--sample_dir', dest='sample_dir', default='./sample', help=
 parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test sample are saved here')
 parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, help='weight on L1 term in objective')
 parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
+rser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
 
 args = parser.parse_args()
 
@@ -46,9 +47,7 @@ def main(_):
         os.makedirs(args.test_dir)
 
     with tf.Session() as sess:
-        model = pix2pix(sess, image_size=args.fine_size, batch_size=args.batch_size,
-                        output_size=args.fine_size, dataset_name=args.dataset_name,
-                        checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir, rotations=args.rotations)
+        model = pix2pix(sess, dataset_name=args.dataset_name, epochs=args.epocs, batch_size=args.batch_size, train_size=args.train_size, load_size=args.load_size, fine_size=args.fine_size, checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir, flips=args.flips, rotations=args.rotations, keep_aspect=args.keep_aspect)
 
         if args.phase == 'train':
             model.train(args)
