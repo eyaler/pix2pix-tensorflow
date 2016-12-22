@@ -10,16 +10,9 @@ from ops import *
 from utils import *
 
 class pix2pix(object):
-    def __init__(self, sess, dataset_name='facades', epochs=args.epocs, batch_size=args.batch_size, train_size=args.train_size, load_size=args.load_size, fine_size=args.fine_size, checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir, flips=args.flips, rotations=args.rotations, keep_aspect=args.keep_aspect)
+    def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, checkpoint_dir,
+                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect):
 
-
-
-
- image_size=256,
-                 batch_size=1, sample_size=1, output_size=256,
-                 gf_dim=64, df_dim=64, L1_lambda=100,
-                 input_c_dim=3, output_c_dim=3,
-                 checkpoint_dir=None, sample_dir=None, flips=True, rotations=False, keep_aspect=False):
         """
 
         Args:
@@ -34,9 +27,9 @@ class pix2pix(object):
         self.sess = sess
         self.is_grayscale = (input_c_dim == 1)
         self.batch_size = batch_size
-        self.image_size = image_size
-        self.sample_size = sample_size
-        self.output_size = output_size
+        self.load_size = load_size
+        self.image_size = fine_size
+        self.output_size = fine_size
 
         self.gf_dim = gf_dim
         self.df_dim = df_dim

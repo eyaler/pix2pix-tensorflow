@@ -34,7 +34,7 @@ parser.add_argument('--sample_dir', dest='sample_dir', default='./sample', help=
 parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test sample are saved here')
 parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, help='weight on L1 term in objective')
 parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
-rser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
+parser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
 
 args = parser.parse_args()
 
@@ -47,7 +47,11 @@ def main(_):
         os.makedirs(args.test_dir)
 
     with tf.Session() as sess:
-        model = pix2pix(sess, dataset_name=args.dataset_name, epochs=args.epocs, batch_size=args.batch_size, train_size=args.train_size, load_size=args.load_size, fine_size=args.fine_size, checkpoint_dir=args.checkpoint_dir, sample_dir=args.sample_dir, flips=args.flips, rotations=args.rotations, keep_aspect=args.keep_aspect)
+        model = pix2pix(sess, batch_size=args.batch_size, load_size=args.load_size,
+                        fine_size=args.fine_size, dataset_name=args.dataset_name, checkpoint_dir=args.checkpoint_dir,
+                        gf_dim=args.ngf, df_dim=args.ndf, L1_lambda=args.L1lambda,
+                        input_c_dim=args.input_nc, output_c_dim=args.output_nc, flips=args.flips,
+                        rotations=args.rotations, keep_aspect=args.keep_aspect)
 
         if args.phase == 'train':
             model.train(args)
