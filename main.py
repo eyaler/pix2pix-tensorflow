@@ -35,6 +35,7 @@ parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test 
 parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, help='weight on L1 term in objective')
 parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
 parser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
+parser.add_argument('--pad_to_white', dest='pad_to_white', type=bool, default=False, help='when keeping aspect ratio should we pad to white?')
 
 args = parser.parse_args()
 
@@ -51,7 +52,7 @@ def main(_):
                         fine_size=args.fine_size, dataset_name=args.dataset_name, checkpoint_dir=args.checkpoint_dir,
                         gf_dim=args.ngf, df_dim=args.ndf, L1_lambda=args.L1_lambda,
                         input_c_dim=args.input_nc, output_c_dim=args.output_nc, flips=args.flips,
-                        rotations=args.rotations, keep_aspect=args.keep_aspect)
+                        rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white)
 
         if args.phase == 'train':
             model.train(args)

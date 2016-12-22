@@ -17,9 +17,9 @@ get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 # -----------------------------
 # new added functions for pix2pix
 
-def load_data(image_path, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
+def load_data(image_path, load_size=286, fine_size=256, aspect=False, pad_to_white=0, flip=True, rot=False, is_test=False):
     img_A, img_B = load_image(image_path)
-    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, flip=flip, rot=rot, is_test=is_test)
+    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, pad_to_white=pad_to_white, flip=flip, rot=rot, is_test=is_test)
 
     img_A = img_A/127.5 - 1.
     img_B = img_B/127.5 - 1.
@@ -37,23 +37,23 @@ def load_image(image_path):
 
     return img_A, img_B
 
-def myresize(img, dims, aspect):
+def myresize(img, dims, aspect, pad_to_white):
     if aspect:
         diff = img.shape[0]-img.shape[1]
         if diff<0:
-            img = np.pad(img, ((abs(diff)//2, img.shape[0]-abs(diff)//2), (0, 0)), 'constant')
+            img = np.pad(img, ((abs(diff)//2, img.shape[0]-abs(diff)//2), (0, 0), (0, 0)), 'constant', constant_values=255 if pad_to_white else 0)
         elif diff>0:
-            img = np.pad(img, ((0, 0), (abs(diff)//2, img.shape[0]-abs(diff)//2)), 'constant')
+            img = np.pad(img, ((0, 0), (abs(diff)//2, img.shape[0]-abs(diff)//2), (0, 0)), 'constant', constant_values=255 if pad_to_white else 0)
     return scipy.misc.imresize(img, dims)
 
-def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
+def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, pad_to_white=0, flip=True, rot=False, is_test=False):
 
     if is_test:
-        img_A = myresize(img_A, [fine_size, fine_size], aspect)
-        img_B = myresize(img_B, [fine_size, fine_size], aspect)
+        img_A = myresize(img_A, [fine_size, fine_size], aspect, pad_to_white)
+        img_B = myresize(img_B, [fine_size, fine_size], aspect, pad_to_white)
     else:
-        img_A = myresize(img_A, [load_size, load_size], aspect)
-        img_B = myresize(img_B, [load_size, load_size], aspect)
+        img_A = myresize(img_A, [load_size, load_size], aspect, pad_to_white)
+        img_B = myresize(img_B, [load_size, load_size], aspect, pad_to_white)
 
         h1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
         w1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
@@ -82,9 +82,6 @@ def imread(path, is_grayscale = False):
         return scipy.misc.imread(path, flatten = True).astype(np.float)
     else:
         return scipy.misc.imread(path).astype(np.float)
-
-def merge_images(images, size):
-    return inverse_transform(images)
 
 def merge(images, size):
     h, w = images.shape[1], images.shape[2]

@@ -11,7 +11,7 @@ from utils import *
 
 class pix2pix(object):
     def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, checkpoint_dir,
-                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect):
+                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white):
 
         """
 
@@ -41,6 +41,7 @@ class pix2pix(object):
         self.flips = flips
         self.rotations = rotations
         self.keep_aspect = keep_aspect
+        self.pad_to_white = pad_to_white
 
         # batch normalization : deals with poor initialization helps gradient flow
         self.d_bn1 = batch_norm(name='d_bn1')
@@ -113,7 +114,7 @@ class pix2pix(object):
 
     def load_random_samples(self):
         data = np.random.choice(glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name)), self.batch_size)
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, flip=self.flips, rot=self.rotations) for sample_file in data]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations) for sample_file in data]
 
         if (self.is_grayscale):
             sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
@@ -160,7 +161,7 @@ class pix2pix(object):
 
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, flip=self.flips, rot=self.rotations) for batch_file in batch_files]
+                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations) for batch_file in batch_files]
                 if (self.is_grayscale):
                     batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
                 else:
@@ -398,7 +399,7 @@ class pix2pix(object):
 
         # load testing input
         print("Loading testing images ...")
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, flip=self.flips, rot=self.rotations, is_test=True) for sample_file in sample_files]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_test=True) for sample_file in sample_files]
 
         if (self.is_grayscale):
             sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
