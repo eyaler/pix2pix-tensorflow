@@ -86,22 +86,22 @@ class pix2pix(object):
 
         self.fake_B_sample = self.sampler(self.real_A)
 
-        self.d_sum = tf.histogram_summary("d", self.D)
-        self.d__sum = tf.histogram_summary("d_", self.D_)
-        self.fake_B_sum = tf.image_summary("fake_B", self.fake_B)
+        self.d_sum = tf.summary.histogram("d", self.D)
+        self.d__sum = tf.summary.histogram("d_", self.D_)
+        self.fake_B_sum = tf.summary.image("fake_B", self.fake_B)
 
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
         self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.ones_like(self.D_))) \
                         + self.L1_lambda * tf.reduce_mean(tf.abs(self.real_B - self.fake_B))
 
-        self.d_loss_real_sum = tf.scalar_summary("d_loss_real", self.d_loss_real)
-        self.d_loss_fake_sum = tf.scalar_summary("d_loss_fake", self.d_loss_fake)
+        self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
+        self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
 
         self.d_loss = self.d_loss_real + self.d_loss_fake
 
-        self.g_loss_sum = tf.scalar_summary("g_loss", self.g_loss)
-        self.d_loss_sum = tf.scalar_summary("d_loss", self.d_loss)
+        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
+        self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
 
         t_vars = tf.trainable_variables()
 
@@ -137,12 +137,13 @@ class pix2pix(object):
                           .minimize(self.d_loss, var_list=self.d_vars)
         g_optim = tf.train.AdamOptimizer(args.lr, beta1=args.beta1) \
                           .minimize(self.g_loss, var_list=self.g_vars)
-        tf.initialize_all_variables().run()
+        init_op = tf.global_variables_initializer()
+        self.sess.run(init_op)
 
-        self.g_sum = tf.merge_summary([self.d__sum,
+        self.g_sum = tf.summary.merge([self.d__sum,
             self.fake_B_sum, self.d_loss_fake_sum, self.g_loss_sum])
-        self.d_sum = tf.merge_summary([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
-        self.writer = tf.train.SummaryWriter("./logs", self.sess.graph)
+        self.d_sum = tf.summary.merge([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
         counter = 1
         start_time = time.time()
@@ -386,7 +387,8 @@ class pix2pix(object):
 
     def test(self, args):
         """Test pix2pix"""
-        tf.initialize_all_variables().run()
+        init_op = tf.global_variables_initializer()
+        self.sess.run(init_op)
 
         sample_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name))
 
