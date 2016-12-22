@@ -38,7 +38,7 @@ class pix2pix(object):
         self.output_c_dim = output_c_dim
 
         self.L1_lambda = L1_lambda
-        self.filps = flips
+        self.flips = flips
         self.rotations = rotations
         self.keep_aspect = keep_aspect
 
