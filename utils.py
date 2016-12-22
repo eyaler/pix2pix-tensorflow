@@ -25,7 +25,7 @@ def load_data(image_path, load_size=286, fine_size=256, aspect=False, flip=True,
     img_B = img_B/127.5 - 1.
 
     img_AB = np.concatenate((img_A, img_B), axis=2)
-    # img_AB shape: (fine_size, fine_size or fine_size*input_aspect_ratio, input_c_dim + output_c_dim)
+    # img_AB shape: (fine_size, fine_size, input_c_dim + output_c_dim)
     return img_AB
 
 def load_image(image_path):
@@ -37,21 +37,28 @@ def load_image(image_path):
 
     return img_A, img_B
 
-def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
-    ratio = 1
+def myresize(img, dims, aspect):
     if aspect:
-        ratio = float(img_A.shape[0])/img_A.shape[1]
-    if is_test:
-        img_A = scipy.misc.imresize(img_A, [fine_size, int(fine_size*ratio)])
-        img_B = scipy.misc.imresize(img_B, [fine_size, int(fine_size*ratio)])
-    else:
-        img_A = scipy.misc.imresize(img_A, [load_size, int(load_size*ratio)])
-        img_B = scipy.misc.imresize(img_B, [load_size, int(load_size*ratio)])
+        diff = img.shape[0]-img.shape[1]
+        if diff<0:
+            img = np.pad(img, ((abs(diff)//2, img.shape[0]-abs(diff)//2), (0, 0)), 'constant')
+        elif diff>0:
+            img = np.pad(img, ((0, 0), (abs(diff)//2, img.shape[0]-abs(diff)//2)), 'constant')
+    return scipy.misc.imresize(img, dims)
 
-        h1 = int(np.ceil(np.random.uniform(1e-2, int((load_size-fine_size)*ratio))))
+def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, flip=True, rot=False, is_test=False):
+
+    if is_test:
+        img_A = myresize(img_A, [fine_size, fine_size], aspect)
+        img_B = myresize(img_B, [fine_size, fine_size], aspect)
+    else:
+        img_A = myresize(img_A, [load_size, load_size], aspect)
+        img_B = myresize(img_B, [load_size, load_size], aspect)
+
+        h1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
         w1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
-        img_A = img_A[h1:h1+int(fine_size*ratio), w1:w1+fine_size]
-        img_B = img_B[h1:h1+int(fine_size*ratio), w1:w1+fine_size]
+        img_A = img_A[h1:h1+fine_size, w1:w1+fine_size]
+        img_B = img_B[h1:h1+fine_size, w1:w1+fine_size]
 
         if flip and np.random.random() > 0.5:
             img_A = np.fliplr(img_A)
