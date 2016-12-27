@@ -10,7 +10,7 @@ from ops import *
 from utils import *
 
 class pix2pix(object):
-    def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, checkpoint_dir,
+    def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, which_direction, checkpoint_dir, load_model,
                  gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white):
 
         """
@@ -25,7 +25,10 @@ class pix2pix(object):
             output_c_dim: (optional) Dimension of output image color. For grayscale input, set to 1. [3]
         """
         self.sess = sess
-        self.is_grayscale = (input_c_dim == 1)
+        self.load_model = load_model
+        self.is_grayscale_A = (input_c_dim == 1 and which_direction=='AtoB') or (output_c_dim == 1 and which_direction=='BtoA')
+        self.is_grayscale_B = (input_c_dim == 1 and which_direction=='BtoA') or (output_c_dim == 1 and which_direction=='AtoB')
+
         self.batch_size = batch_size
         self.load_size = load_size
         self.image_size = fine_size
@@ -42,6 +45,7 @@ class pix2pix(object):
         self.rotations = rotations
         self.keep_aspect = keep_aspect
         self.pad_to_white = pad_to_white
+        self.which_direction = which_direction
 
         # batch normalization : deals with poor initialization helps gradient flow
         self.d_bn1 = batch_norm(name='d_bn1')
@@ -75,8 +79,12 @@ class pix2pix(object):
                                          self.input_c_dim + self.output_c_dim],
                                         name='real_A_and_B_images')
 
-        self.real_B = self.real_data[:, :, :, :self.input_c_dim]
-        self.real_A = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        if self.which_direction=='AtoB':
+            self.real_A = self.real_data[:, :, :, :self.input_c_dim]
+            self.real_B = self.real_data[:, :, :, self.input_c_dim:]
+        else:
+            self.real_A = self.real_data[:, :, :, self.output_c_dim:]
+            self.real_B = self.real_data[:, :, :, :self.output_c_dim]
 
         self.fake_B = self.generator(self.real_A)
 
@@ -114,12 +122,9 @@ class pix2pix(object):
 
     def load_random_samples(self):
         data = np.random.choice(glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name)), self.batch_size)
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations) for sample_file in data]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
 
-        if (self.is_grayscale):
-            sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
-        else:
-            sample_images = np.array(sample).astype(np.float32)
+        sample_images = np.array(sample).astype(np.float32)
         return sample_images
 
     def sample_model(self, sample_dir, epoch, idx):
@@ -149,10 +154,11 @@ class pix2pix(object):
         counter = 1
         start_time = time.time()
 
-        if self.load(self.checkpoint_dir):
-            print(" [*] Load SUCCESS")
-        else:
-            print(" [!] Load failed...")
+        if self.load_model:
+            if self.load(self.checkpoint_dir):
+                print(" [*] Load SUCCESS")
+            else:
+                print(" [!] Load failed...")
 
         for epoch in xrange(args.epochs):
             data = glob('./datasets/{}/train/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/train/*.png'.format(self.dataset_name))
@@ -161,11 +167,8 @@ class pix2pix(object):
 
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations) for batch_file in batch_files]
-                if (self.is_grayscale):
-                    batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
-                else:
-                    batch_images = np.array(batch).astype(np.float32)
+                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for batch_file in batch_files]
+                batch_images = np.array(batch).astype(np.float32)
 
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
@@ -399,12 +402,9 @@ class pix2pix(object):
 
         # load testing input
         print("Loading testing images ...")
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_test=True) for sample_file in sample_files]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_test=True, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in sample_files]
 
-        if (self.is_grayscale):
-            sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
-        else:
-            sample_images = np.array(sample).astype(np.float32)
+        sample_images = np.array(sample).astype(np.float32)
 
         sample_images = [sample_images[i:i+self.batch_size]
                          for i in xrange(0, len(sample_images), self.batch_size)]
