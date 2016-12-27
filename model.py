@@ -188,7 +188,7 @@ class pix2pix(object):
 
                 counter += 1
 
-                if args.print_freq>0 and np.mod(counter, args.print_freq) == 0:
+                if (args.print_freq>0 and np.mod(counter, args.print_freq) == 0) or (epoch==args.epochs-1 and counter==batch_idxs):
                     errD_fake = self.d_loss_fake.eval({self.real_data: batch_images})
                     errD_real = self.d_loss_real.eval({self.real_data: batch_images})
                     errG = self.g_loss.eval({self.real_data: batch_images})
@@ -197,10 +197,10 @@ class pix2pix(object):
                           % (epoch, idx, batch_idxs,
                              time.time() - start_time, errD_fake + errD_real, errG))
 
-                if args.sample_freq>0 and np.mod(counter, args.sample_freq) == 0:
+                if (args.sample_freq>0 and np.mod(counter, args.sample_freq) == 0) or (epoch==args.epochs-1 and counter==batch_idxs):
                     self.sample_model(args.sample_dir, epoch, idx)
 
-                if args.save_latest_freq>0 and np.mod(counter, args.save_latest_freq) == 0:
+                if (args.save_latest_freq>0 and np.mod(counter, args.save_latest_freq) == 0) or (epoch==args.epochs-1 and counter==batch_idxs):
                     self.save(args.checkpoint_dir)
 
     def discriminator(self, image, y=None, reuse=False):

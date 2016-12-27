@@ -24,7 +24,7 @@ parser.add_argument('--flips', dest='flips', type=bool, default=True, help='use 
 parser.add_argument('--which_direction', dest='which_direction', default='AtoB', help='AtoB or BtoA')
 parser.add_argument('--phase', dest='phase', default='train', help='train, test')
 #parser.add_argument('--save_epoch_freq', dest='save_epoch_freq', type=int, default=50, help='save a model every save_epoch_freq epochs (does not overwrite previously saved models)')
-parser.add_argument('--save_latest_freq', dest='save_latest_freq', type=int, default=5000, help='save the latest model every latest_freq sgd iterations (overwrites the previous latest model)')
+parser.add_argument('--save_latest_freq', dest='save_latest_freq', type=int, default=100, help='save the latest model every latest_freq sgd iterations (overwrites the previous latest model)')
 parser.add_argument('--sample_freq', dest='sample_freq', type=int, default=5000, help='save the current sample results every sample_freq_iterations)')
 parser.add_argument('--print_freq', dest='print_freq', type=int, default=1, help='print the debug information every print_freq iterations')
 parser.add_argument('--continue_train', dest='continue_train', type=bool, default=False, help='if continue training, load the latest model: 1: true, 0: false')
