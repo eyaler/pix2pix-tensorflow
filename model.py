@@ -366,7 +366,7 @@ class pix2pix(object):
 
         return tf.nn.tanh(self.d8)
 
-    def save(self, checkpoint_dir, step):
+    def save(self, checkpoint_dir, step=None):
         model_name = "pix2pix.model"
         model_dir = "%s_%s_%s" % (self.dataset_name, self.batch_size, self.output_size)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
