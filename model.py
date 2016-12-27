@@ -82,9 +82,11 @@ class pix2pix(object):
         if self.which_direction=='AtoB':
             self.real_A = self.real_data[:, :, :, :self.input_c_dim]
             self.real_B = self.real_data[:, :, :, self.input_c_dim:]
-        else:
+        elif self.which_direction=='BtoA':
             self.real_A = self.real_data[:, :, :, self.output_c_dim:]
             self.real_B = self.real_data[:, :, :, :self.output_c_dim]
+        else:
+            raise ValueError('Bad direction: ' + self.which_direction)
 
         self.fake_B = self.generator(self.real_A)
 
@@ -121,7 +123,10 @@ class pix2pix(object):
 
 
     def load_random_samples(self):
-        data = np.random.choice(glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name)), self.batch_size)
+        val_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name))
+        if not val_files:
+            return None
+        data = np.random.choice(val_files, self.batch_size)
         sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
 
         sample_images = np.array(sample).astype(np.float32)
@@ -129,6 +134,8 @@ class pix2pix(object):
 
     def sample_model(self, sample_dir, epoch, idx):
         sample_images = self.load_random_samples()
+        if sample_images is None:
+            return
         samples, d_loss, g_loss = self.sess.run(
             [self.fake_B_sample, self.d_loss, self.g_loss],
             feed_dict={self.real_data: sample_images}
@@ -397,7 +404,7 @@ class pix2pix(object):
         init_op = tf.global_variables_initializer()
         self.sess.run(init_op)
 
-        sample_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name))
+        sample_files = glob('./datasets/{}/test/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/test/*.png'.format(self.dataset_name))
 
         # sort testing input
         n = [int(i) for i in map(lambda x: x.split('/')[-1].replace('.png','jpg').split('.jpg')[0], sample_files)]

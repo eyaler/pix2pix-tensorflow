@@ -1,7 +1,6 @@
 import argparse
 import os
-import scipy.misc
-import numpy as np
+import shutil
 
 from model import pix2pix
 import tensorflow as tf
@@ -25,14 +24,14 @@ parser.add_argument('--which_direction', dest='which_direction', default='AtoB',
 parser.add_argument('--phase', dest='phase', default='train', help='train, test')
 #parser.add_argument('--save_epoch_freq', dest='save_epoch_freq', type=int, default=50, help='save a model every save_epoch_freq epochs (does not overwrite previously saved models)')
 parser.add_argument('--save_latest_freq', dest='save_latest_freq', type=int, default=100, help='save the latest model every latest_freq sgd iterations (overwrites the previous latest model)')
-parser.add_argument('--sample_freq', dest='sample_freq', type=int, default=5000, help='save the current sample results every sample_freq_iterations)')
+parser.add_argument('--sample_freq', dest='sample_freq', type=int, default=100, help='save the current sample results every sample_freq_iterations)')
 parser.add_argument('--print_freq', dest='print_freq', type=int, default=1, help='print the debug information every print_freq iterations')
 parser.add_argument('--continue_train', dest='continue_train', type=bool, default=False, help='if continue training, load the latest model: 1: true, 0: false')
 parser.add_argument('--serial_batches', dest='serial_batches', type=bool, default=False, help='if 1, takes images in order to make batches, otherwise takes them randomly')
 #parser.add_argument('--serial_batch_iter', dest='serial_batch_iter', type=bool, default=True, help='iter into serial image list')
 parser.add_argument('--checkpoint_dir', dest='checkpoint_dir', default='./checkpoint', help='models are saved here')
-parser.add_argument('--sample_dir', dest='sample_dir', default='./sample', help='sample are saved here')
-parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test sample are saved here')
+parser.add_argument('--sample_dir', dest='sample_dir', default='./sample', help='validation samples are saved here')
+parser.add_argument('--test_dir', dest='test_dir', default='./test', help='test samples are saved here')
 parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, help='weight on L1 term in objective')
 parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
 parser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
@@ -43,10 +42,6 @@ args = parser.parse_args()
 def main(_):
     if not os.path.exists(args.checkpoint_dir):
         os.makedirs(args.checkpoint_dir)
-    if not os.path.exists(args.sample_dir):
-        os.makedirs(args.sample_dir)
-    if not os.path.exists(args.test_dir):
-        os.makedirs(args.test_dir)
 
     with tf.Session() as sess:
         model = pix2pix(sess, batch_size=args.batch_size, load_size=args.load_size, fine_size=args.fine_size,
@@ -56,8 +51,12 @@ def main(_):
                         rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white)
 
         if args.phase == 'train':
+            shutil.rmtree(args.sample_dir, ignore_errors=True)
+            os.makedirs(args.sample_dir)
             model.train(args)
         else:
+            shutil.rmtree(args.test_dir, ignore_errors=True)
+            os.makedirs(args.test_dir)
             model.test(args)
 
 if __name__ == '__main__':
