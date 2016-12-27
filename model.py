@@ -162,7 +162,8 @@ class pix2pix(object):
 
         for epoch in xrange(args.epochs):
             data = glob('./datasets/{}/train/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/train/*.png'.format(self.dataset_name))
-            #np.random.shuffle(data)
+            if not args.serial_batches:
+                np.random.shuffle(data)
             batch_idxs = min(len(data), args.train_size) // self.batch_size
 
             for idx in xrange(0, batch_idxs):
@@ -185,20 +186,22 @@ class pix2pix(object):
                                                feed_dict={ self.real_data: batch_images })
                 self.writer.add_summary(summary_str, counter)
 
-                errD_fake = self.d_loss_fake.eval({self.real_data: batch_images})
-                errD_real = self.d_loss_real.eval({self.real_data: batch_images})
-                errG = self.g_loss.eval({self.real_data: batch_images})
-
                 counter += 1
-                print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
-                    % (epoch, idx, batch_idxs,
-                        time.time() - start_time, errD_fake+errD_real, errG))
 
-                if np.mod(counter, 100) == 1:
+                if args.print_freq>0 and np.mod(counter, args.print_freq) == 0:
+                    errD_fake = self.d_loss_fake.eval({self.real_data: batch_images})
+                    errD_real = self.d_loss_real.eval({self.real_data: batch_images})
+                    errG = self.g_loss.eval({self.real_data: batch_images})
+
+                    print("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+                          % (epoch, idx, batch_idxs,
+                             time.time() - start_time, errD_fake + errD_real, errG))
+
+                if args.sample_freq>0 and np.mod(counter, args.sample_freq) == 0:
                     self.sample_model(args.sample_dir, epoch, idx)
 
-                if np.mod(counter, 500) == 2:
-                    self.save(args.checkpoint_dir, counter)
+                if args.save_latest_freq>0 and np.mod(counter, args.save_latest_freq) == 0:
+                    self.save(args.checkpoint_dir)
 
     def discriminator(self, image, y=None, reuse=False):
         # image is 256 x 256 x (input_c_dim + output_c_dim)
