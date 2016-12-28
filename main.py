@@ -55,10 +55,10 @@ def main(_):
             shutil.rmtree(args.sample_dir, ignore_errors=True)
             os.makedirs(args.sample_dir)
             model.train(args)
-        else:
-            shutil.rmtree(args.test_dir, ignore_errors=True)
-            os.makedirs(args.test_dir)
-            model.test(args)
+
+        shutil.rmtree(args.test_dir, ignore_errors=True)
+        os.makedirs(args.test_dir)
+        model.test(args)
 
 if __name__ == '__main__':
     tf.app.run()
