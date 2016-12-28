@@ -11,7 +11,7 @@ from utils import *
 
 class pix2pix(object):
     def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, which_direction, checkpoint_dir, load_model,
-                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white):
+                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white, gcn):
 
         """
 
@@ -45,6 +45,12 @@ class pix2pix(object):
         self.rotations = rotations
         self.keep_aspect = keep_aspect
         self.pad_to_white = pad_to_white
+        self.gcn = 0
+        if gcn:
+            if which_direction=='AtoB':
+                self.gcn = 1
+            else:
+                self.gcn = 2
         self.which_direction = which_direction
 
         # batch normalization : deals with poor initialization helps gradient flow
@@ -123,11 +129,13 @@ class pix2pix(object):
 
 
     def load_random_samples(self):
+        if not os.path.exists('./datasets/{}/val'.format(self.dataset_name)):
+            return None
         val_files = glob('./datasets/{}/val/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/val/*.png'.format(self.dataset_name))
         if not val_files:
             return None
         data = np.random.choice(val_files, self.batch_size)
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
 
         sample_images = np.array(sample).astype(np.float32)
         return sample_images
@@ -175,7 +183,7 @@ class pix2pix(object):
 
             for idx in xrange(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for batch_file in batch_files]
+                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for batch_file in batch_files]
                 batch_images = np.array(batch).astype(np.float32)
 
                 # Update D network
@@ -408,7 +416,7 @@ class pix2pix(object):
 
         # load testing input
         print("Loading testing images ...")
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, flip=self.flips, rot=self.rotations, is_test=True, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in sample_files]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_test=True, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in sample_files]
 
         sample_images = np.array(sample).astype(np.float32)
 
@@ -430,5 +438,9 @@ class pix2pix(object):
                 self.fake_B_sample,
                 feed_dict={self.real_data: sample_image}
             )
-            save_images(samples, [self.batch_size, 1],
-                        './{}/test_{:04d}.png'.format(args.test_dir, idx))
+
+            if self.batch_size==1:
+                path = './{}/{}'.format(args.test_dir, sample_files[i].split('/')[-1].replace('.jpg','.png'))
+            else:
+                path = './{}/test_{:04d}.png'.format(args.test_dir, idx)
+            save_images(samples, [self.batch_size, 1], path)

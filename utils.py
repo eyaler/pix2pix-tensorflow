@@ -17,9 +17,9 @@ get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 # -----------------------------
 # new added functions for pix2pix
 
-def load_data(image_path, load_size=286, fine_size=256, aspect=False, pad_to_white=0, flip=True, rot=False, is_test=False, is_grayscale_A=False, is_grayscale_B=False):
+def load_data(image_path, load_size=286, fine_size=256, aspect=False, pad_to_white=0, gcn=0, flip=True, rot=False, is_test=False, is_grayscale_A=False, is_grayscale_B=False):
     img_A, img_B = load_image(image_path, is_grayscale_A=is_grayscale_A, is_grayscale_B=is_grayscale_B)
-    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, pad_to_white=pad_to_white, flip=flip, rot=rot, is_test=is_test)
+    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, pad_to_white=pad_to_white, gcn=gcn, flip=flip, rot=rot, is_test=is_test)
 
     img_A = img_A/127.5 - 1.
     img_B = img_B/127.5 - 1.
@@ -65,7 +65,17 @@ def myresize(img, dims, aspect, pad_to_white):
         img = np.pad(img, vals, 'constant', constant_values=255 if pad_to_white else 0)
     return scipy.misc.imresize(img, dims) # accepts (x,y) or (x,y,3)
 
-def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, pad_to_white=0, flip=True, rot=False, is_test=False):
+def gcn_norm(img):
+    minimum = np.min(img, axis=(0,1), keepdims=True)
+    maximum = np.max(img, axis=(0,1), keepdims=True)
+    return 255*(img-minimum)/(maximum-minimum)
+
+def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, pad_to_white=False, gcn=0, flip=True, rot=False, is_test=False):
+
+    if gcn==1:
+        img_A = gcn_norm(img_A)
+    elif gcn==2:
+        img_B = gcn_norm(img_B)
 
     if is_test:
         img_A = myresize(img_A, [fine_size, fine_size], aspect, pad_to_white)
