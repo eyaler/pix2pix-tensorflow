@@ -81,11 +81,11 @@ class pix2pix(object):
                                         name='real_A_and_B_images')
 
         if self.which_direction=='AtoB':
-            self.real_A = self.real_data[:, :, :, :self.input_c_dim]
-            self.real_B = self.real_data[:, :, :, self.input_c_dim:]
+            self.real_A = self.real_data[..., :self.input_c_dim]
+            self.real_B = self.real_data[..., self.input_c_dim:]
         elif self.which_direction=='BtoA':
-            self.real_A = self.real_data[:, :, :, self.output_c_dim:]
-            self.real_B = self.real_data[:, :, :, :self.output_c_dim]
+            self.real_A = self.real_data[..., self.output_c_dim:]
+            self.real_B = self.real_data[..., :self.output_c_dim]
         else:
             raise ValueError('Bad direction: ' + self.which_direction)
 
@@ -122,7 +122,6 @@ class pix2pix(object):
 
         self.saver = tf.train.Saver()
 
-
     def load_random_samples(self):
         if not os.path.exists('./datasets/{}/val'.format(self.dataset_name)):
             return None
@@ -144,12 +143,7 @@ class pix2pix(object):
             feed_dict={self.real_data: sample_images}
         )
         path = './{}/train_{:02d}_{:04d}.png'.format(sample_dir, epoch, idx)
-        if self.batch_size==1:
-            w = sample_images.shape[2]//2
-            images = [sample_images[:,:,:w], sample_images[:,:,w:], samples]
-            if self.which_direction == 'BtoA':
-                images.reverse()
-            save_images(np.asarray(images), [1,3], path.split('/')[-2]+'/gt_'+path.split('/')[-1])
+        save_gt(sample_images, samples, self.which_direction, self.input_c_dim, self.output_c_dim, path)
         save_images(samples, [self.batch_size, 1], path)
 
         print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
@@ -443,11 +437,7 @@ class pix2pix(object):
 
             if self.batch_size==1:
                 path = './{}/{}'.format(args.test_dir, sample_files[i].split('/')[-1].replace('.jpg','.png'))
-                w = sample_image.shape[2]//2
-                images = [sample_image[:,:,:w], sample_image[:,:,w:], samples]
-                if self.which_direction == 'BtoA':
-                    images.reverse()
-                save_images(np.asarray(images), [1,3], path.split('/')[-2]+'/gt_'+path.split('/')[-1])
+                save_gt(sample_image, samples, self.which_direction, self.input_c_dim, self.output_c_dim, path)
             else:
                 path = './{}/test_{:04d}.png'.format(args.test_dir, idx)
             save_images(samples, [self.batch_size, 1], path)
