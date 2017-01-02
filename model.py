@@ -4,14 +4,13 @@ import time
 from glob import glob
 import tensorflow as tf
 import numpy as np
-from six.moves import xrange
 
 from ops import *
 from utils import *
 
 class pix2pix(object):
     def __init__(self, sess, batch_size, load_size, fine_size, dataset_name, which_direction, checkpoint_dir, load_model,
-                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white, gcn):
+                 gf_dim, df_dim, L1_lambda, input_c_dim, output_c_dim, flips, rotations, keep_aspect, pad_to_white, gcn, interp):
 
         """
 
@@ -45,12 +44,8 @@ class pix2pix(object):
         self.rotations = rotations
         self.keep_aspect = keep_aspect
         self.pad_to_white = pad_to_white
-        self.gcn = 0
-        if gcn:
-            if which_direction=='AtoB':
-                self.gcn = 1
-            else:
-                self.gcn = 2
+        self.gcn = gcn
+        self.interp = interp
         self.which_direction = which_direction
 
         # batch normalization : deals with poor initialization helps gradient flow
@@ -135,7 +130,7 @@ class pix2pix(object):
         if not val_files:
             return None
         data = np.random.choice(val_files, self.batch_size)
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, which_direction=self.which_direction, gcn=self.gcn, interp=self.interp, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in data]
 
         sample_images = np.array(sample).astype(np.float32)
         return sample_images
@@ -148,8 +143,15 @@ class pix2pix(object):
             [self.fake_B_sample, self.d_loss, self.g_loss],
             feed_dict={self.real_data: sample_images}
         )
-        save_images(samples, [self.batch_size, 1],
-                    './{}/train_{:02d}_{:04d}.png'.format(sample_dir, epoch, idx))
+        path = './{}/train_{:02d}_{:04d}.png'.format(sample_dir, epoch, idx)
+        if self.batch_size==1:
+            w = sample_images.shape[2]//2
+            images = [sample_images[:,:,:w], sample_images[:,:,w:], samples]
+            if self.which_direction == 'BtoA':
+                images.reverse()
+            save_images(np.asarray(images), [1,3], path.split('/')[-2]+'/gt_'+path.split('/')[-1])
+        save_images(samples, [self.batch_size, 1], path)
+
         print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
 
     def train(self, args):
@@ -175,15 +177,15 @@ class pix2pix(object):
             else:
                 print(" [!] Load failed...")
 
-        for epoch in xrange(args.epochs):
+        for epoch in range(args.epochs):
             data = glob('./datasets/{}/train/*.jpg'.format(self.dataset_name))+glob('./datasets/{}/train/*.png'.format(self.dataset_name))
             if not args.serial_batches:
                 np.random.shuffle(data)
             batch_idxs = min(len(data), args.train_size) // self.batch_size
 
-            for idx in xrange(0, batch_idxs):
+            for idx in range(0, batch_idxs):
                 batch_files = data[idx*self.batch_size:(idx+1)*self.batch_size]
-                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for batch_file in batch_files]
+                batch = [load_data(batch_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, which_direction=self.which_direction, gcn=self.gcn, interp=self.interp, flip=self.flips, rot=self.rotations, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for batch_file in batch_files]
                 batch_images = np.array(batch).astype(np.float32)
 
                 # Update D network
@@ -416,12 +418,12 @@ class pix2pix(object):
 
         # load testing input
         print("Loading testing images ...")
-        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, gcn=self.gcn, flip=self.flips, rot=self.rotations, is_test=True, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in sample_files]
+        sample = [load_data(sample_file, load_size=self.load_size, fine_size=self.image_size, aspect=self.keep_aspect, pad_to_white=self.pad_to_white, which_direction=self.which_direction, gcn=self.gcn, interp=self.interp, flip=self.flips, rot=self.rotations, is_test=True, is_grayscale_A=self.is_grayscale_A, is_grayscale_B=self.is_grayscale_B) for sample_file in sample_files]
 
         sample_images = np.array(sample).astype(np.float32)
 
         sample_images = [sample_images[i:i+self.batch_size]
-                         for i in xrange(0, len(sample_images), self.batch_size)]
+                         for i in range(0, len(sample_images), self.batch_size)]
         sample_images = np.array(sample_images)
         print(sample_images.shape)
 
@@ -441,6 +443,11 @@ class pix2pix(object):
 
             if self.batch_size==1:
                 path = './{}/{}'.format(args.test_dir, sample_files[i].split('/')[-1].replace('.jpg','.png'))
+                w = sample_image.shape[2]//2
+                images = [sample_image[:,:,:w], sample_image[:,:,w:], samples]
+                if self.which_direction == 'BtoA':
+                    images.reverse()
+                save_images(np.asarray(images), [1,3], path.split('/')[-2]+'/gt_'+path.split('/')[-1])
             else:
                 path = './{}/test_{:04d}.png'.format(args.test_dir, idx)
             save_images(samples, [self.batch_size, 1], path)

@@ -36,7 +36,8 @@ parser.add_argument('--L1_lambda', dest='L1_lambda', type=float, default=100.0, 
 parser.add_argument('--rotations', dest='rotations', type=bool, default=False, help='use rotations for data augmentation')
 parser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, default=False, help='keep aspect ratio when scaling image')
 parser.add_argument('--pad_to_white', dest='pad_to_white', type=bool, default=False, help='when keeping aspect ratio should we pad to white?')
-parser.add_argument('--gcn', dest='gcn', type=bool, default=False, help='global contrast normalization preprocessing')
+parser.add_argument('--gcn', dest='gcn', type=bool, default=False, help='global contrast normalization preprocessing for source image')
+parser.add_argument('--interp', dest='interp', type=bool, default=True, help='use interpolation when resizing target image')
 
 args = parser.parse_args()
 
@@ -49,7 +50,7 @@ def main(_):
                         dataset_name=args.dataset_name, which_direction=args.which_direction, checkpoint_dir=args.checkpoint_dir,
                         load_model=args.continue_train, gf_dim=args.ngf, df_dim=args.ndf, L1_lambda=args.L1_lambda,
                         input_c_dim=args.input_nc, output_c_dim=args.output_nc, flips=args.flips,
-                        rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white, gcn=args.gcn)
+                        rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white, gcn=args.gcn, interp=args.interp)
 
         if args.phase == 'train':
             shutil.rmtree(args.sample_dir, ignore_errors=True)

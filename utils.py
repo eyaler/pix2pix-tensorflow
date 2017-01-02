@@ -17,9 +17,9 @@ get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 # -----------------------------
 # new added functions for pix2pix
 
-def load_data(image_path, load_size=286, fine_size=256, aspect=False, pad_to_white=0, gcn=0, flip=True, rot=False, is_test=False, is_grayscale_A=False, is_grayscale_B=False):
+def load_data(image_path, load_size=286, fine_size=256, aspect=False, pad_to_white=0, which_direction='AtoB', gcn=False, interp=True, flip=True, rot=False, is_test=False, is_grayscale_A=False, is_grayscale_B=False):
     img_A, img_B = load_image(image_path, is_grayscale_A=is_grayscale_A, is_grayscale_B=is_grayscale_B)
-    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, pad_to_white=pad_to_white, gcn=gcn, flip=flip, rot=rot, is_test=is_test)
+    img_A, img_B = preprocess_A_and_B(img_A, img_B, load_size=load_size, fine_size=fine_size, aspect=aspect, pad_to_white=pad_to_white, which_direction=which_direction, gcn=gcn, interp=interp, flip=flip, rot=rot, is_test=is_test)
 
     img_A = img_A/127.5 - 1.
     img_B = img_B/127.5 - 1.
@@ -39,10 +39,9 @@ def rgb2gray(rgb):
 
 def load_image(image_path, is_grayscale_A, is_grayscale_B):
     input_img = imread(image_path)
-    w = int(input_img.shape[1])
-    w2 = w//2
-    img_A = input_img[:, 0:w2]
-    img_B = input_img[:, w2:w]
+    w = input_img.shape[1]//2
+    img_A = input_img[:, :w]
+    img_B = input_img[:, w:]
 
     if is_grayscale_A:
         img_A = rgb2gray(img_A)
@@ -52,7 +51,11 @@ def load_image(image_path, is_grayscale_A, is_grayscale_B):
 
     return img_A, img_B
 
-def myresize(img, dims, aspect, pad_to_white):
+def myresize(img, dims, aspect, pad_to_white, interp):
+    if interp:
+        interp = 'bilinear'
+    else:
+        interp = 'nearest'
     if aspect:
         diff = img.shape[0]-img.shape[1]
         padding = (abs(diff) // 2, abs(diff) - abs(diff) // 2)
@@ -63,26 +66,35 @@ def myresize(img, dims, aspect, pad_to_white):
         if len(img.shape)==3:
             vals.append((0,0))
         img = np.pad(img, vals, 'constant', constant_values=255 if pad_to_white else 0)
-    return scipy.misc.imresize(img, dims) # accepts (x,y) or (x,y,3)
+    return scipy.misc.imresize(img, dims, interp) # accepts (x,y) or (x,y,3) image sizes
 
 def gcn_norm(img):
     minimum = np.min(img, axis=(0,1), keepdims=True)
     maximum = np.max(img, axis=(0,1), keepdims=True)
     return 255*(img-minimum)/(maximum-minimum)
 
-def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, pad_to_white=False, gcn=0, flip=True, rot=False, is_test=False):
+def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False, pad_to_white=False, which_direction='AtoB', gcn=False, interp=True, flip=True, rot=False, is_test=False):
 
-    if gcn==1:
-        img_A = gcn_norm(img_A)
-    elif gcn==2:
-        img_B = gcn_norm(img_B)
+    if gcn:
+        if which_direction=='AtoB':
+            img_A = gcn_norm(img_A)
+        else:
+            img_B = gcn_norm(img_B)
+
+    interp_A = True
+    interp_B = True
+    if not interp:
+        if which_direction=='AtoB':
+            interp_B = False
+        else:
+            interp_A = False
 
     if is_test:
-        img_A = myresize(img_A, [fine_size, fine_size], aspect, pad_to_white)
-        img_B = myresize(img_B, [fine_size, fine_size], aspect, pad_to_white)
+        img_A = myresize(img_A, [fine_size, fine_size], aspect, pad_to_white, interp_A)
+        img_B = myresize(img_B, [fine_size, fine_size], aspect, pad_to_white, interp_B)
     else:
-        img_A = myresize(img_A, [load_size, load_size], aspect, pad_to_white)
-        img_B = myresize(img_B, [load_size, load_size], aspect, pad_to_white)
+        img_A = myresize(img_A, [load_size, load_size], aspect, pad_to_white, interp_A)
+        img_B = myresize(img_B, [load_size, load_size], aspect, pad_to_white, interp_B)
 
         h1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
         w1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
