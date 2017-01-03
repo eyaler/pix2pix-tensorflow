@@ -3,12 +3,10 @@ Some codes from https://github.com/Newmu/dcgan_code
 """
 from __future__ import division
 import math
-import json
-import random
 import pprint
 import scipy.misc
 import numpy as np
-from time import gmtime, strftime
+import os
 
 pp = pprint.PrettyPrinter()
 
@@ -140,14 +138,3 @@ def imsave(images, size, path):
 def inverse_transform(images):
     return (images+1.)/2.
 
-def save_gt(input, output, which_direction, input_c_dim, output_c_dim, path):
-    if which_direction == 'AtoB':
-        real_A = input[..., :input_c_dim]
-        real_B = input[..., input_c_dim:]
-    elif which_direction == 'BtoA':
-        real_A = input[..., output_c_dim:]
-        real_B = input[..., output_c_dim]
-    images = [real_A, real_B, output]
-    if which_direction == 'BtoA':
-        images.reverse()
-    save_images(np.asarray(images), [1, 3], path.split('/')[-2] + '/gt_' + path.split('/')[-1])

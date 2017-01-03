@@ -38,6 +38,7 @@ parser.add_argument('--keep_aspect_ratio', dest='keep_aspect', type=bool, defaul
 parser.add_argument('--pad_to_white', dest='pad_to_white', type=bool, default=False, help='when keeping aspect ratio should we pad to white?')
 parser.add_argument('--gcn', dest='gcn', type=bool, default=False, help='global contrast normalization preprocessing for source image')
 parser.add_argument('--interp', dest='interp', type=bool, default=True, help='use interpolation when resizing target image')
+parser.add_argument('--acc_threshold', dest='acc_threshold', type=float, default=0.5, help='background probability threshold for accuracy calculation')
 
 args = parser.parse_args()
 
@@ -50,7 +51,7 @@ def main(_):
                         dataset_name=args.dataset_name, which_direction=args.which_direction, checkpoint_dir=args.checkpoint_dir,
                         load_model=args.continue_train, gf_dim=args.ngf, df_dim=args.ndf, L1_lambda=args.L1_lambda,
                         input_c_dim=args.input_nc, output_c_dim=args.output_nc, flips=args.flips,
-                        rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white, gcn=args.gcn, interp=args.interp)
+                        rotations=args.rotations, keep_aspect=args.keep_aspect, pad_to_white=args.pad_to_white, gcn=args.gcn, interp=args.interp, acc_threshold=args.acc_threshold)
 
         if args.phase == 'train':
             shutil.rmtree(args.sample_dir, ignore_errors=True)
