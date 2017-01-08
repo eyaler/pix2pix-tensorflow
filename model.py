@@ -106,12 +106,14 @@ class pix2pix(object):
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
 
-        fake_argmax = tf.where(tf.reduce_max(self.fake_B, axis=3) > self.acc_threshold*2-1, tf.argmax(self.fake_B, axis=3), -tf.ones(shape=tf.shape(self.real_B)[:-1], dtype=tf.int64))
-        real_argmax = tf.where(tf.reduce_max(self.real_B, axis=3) > self.acc_threshold*2-1, tf.argmax(self.real_B, axis=3), -tf.ones(shape=tf.shape(self.real_B)[:-1], dtype=tf.int64))
-        self.pixel_acc = tf.reduce_mean(tf.cast(tf.equal(fake_argmax,real_argmax), tf.float32))
-        self.l1_loss = tf.reduce_mean(tf.abs(self.real_B - self.fake_B))
+        fake_argmin = tf.select(tf.reduce_min(self.fake_B_sample, axis=3) < self.acc_threshold*2-1, tf.argmin(self.fake_B_sample, axis=3), -tf.ones(shape=tf.shape(self.real_B)[:-1], dtype=tf.int64))
+        real_argmin = tf.select(tf.reduce_min(self.real_B, axis=3) < self.acc_threshold*2-1, tf.argmin(self.real_B, axis=3), -tf.ones(shape=tf.shape(self.real_B)[:-1], dtype=tf.int64))
+        self.fake_threshold = tf.one_hot(fake_argmin, 3, on_value=-1, off_value=1)
+        self.pixel_acc = tf.reduce_mean(tf.cast(tf.equal(fake_argmin, real_argmin), tf.float32))
+        self.l1_loss = tf.reduce_mean(tf.abs(self.real_B - self.fake_B_sample))
+
         self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.ones_like(self.D_))) \
-                      + self.L1_lambda * self.l1_loss
+                      + self.L1_lambda * tf.reduce_mean(tf.abs(self.real_B - self.fake_B))
 
         self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
@@ -128,22 +130,25 @@ class pix2pix(object):
 
         self.saver = tf.train.Saver()
 
-    def evaluate(self, input, output, which_direction, input_c_dim, output_c_dim, path):
+    def evaluate(self, input, output, threshold, which_direction, input_c_dim, output_c_dim, path):
         if which_direction == 'AtoB':
             real_A = input[..., :input_c_dim]
             real_B = input[..., input_c_dim:]
         elif which_direction == 'BtoA':
             real_A = input[..., output_c_dim:]
             real_B = input[..., output_c_dim]
-        images = [real_A, real_B, output]
-        for i in range(3):
+        images = [real_A, real_B, threshold, output]
+        for i in range(len(images)):
             images[i] = images[i][0]
             if images[i].shape[2] == 1:
                 images[i] = np.repeat(images[i], 3, 2)
 
+        save_images(images[2][None,...], [1, 1],
+                    os.path.join(os.path.dirname(path), '_thresh_' + os.path.basename(path)))
         if which_direction == 'BtoA':
             images.reverse()
-        save_images(np.asarray(images), [1, 3], os.path.join(os.path.dirname(path), '_eval_' + os.path.basename(path)))
+        save_images(np.asarray(images), [1, len(images)], os.path.join(os.path.dirname(path), '_eval_' + os.path.basename(path)))
+
 
     def load_random_samples(self):
         if not os.path.exists('./datasets/{}/val'.format(self.dataset_name)):
@@ -161,12 +166,12 @@ class pix2pix(object):
         sample_images = self.load_random_samples()
         if sample_images is None:
             return
-        samples, d_loss, g_loss = self.sess.run(
-            [self.fake_B_sample, self.d_loss, self.g_loss],
+        samples, d_loss, g_loss, sample_threshold = self.sess.run(
+            [self.fake_B_sample, self.d_loss, self.g_loss, self.fake_threshold],
             feed_dict={self.real_data: sample_images}
         )
         path = './{}/train_{:02d}_{:04d}.png'.format(sample_dir, epoch, idx)
-        self.evaluate(sample_images, samples, self.which_direction, self.input_c_dim, self.output_c_dim, path)
+        self.evaluate(sample_images, samples, sample_threshold, self.which_direction, self.input_c_dim, self.output_c_dim, path)
         save_images(samples, [self.batch_size, 1], path)
 
         print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
@@ -442,9 +447,7 @@ class pix2pix(object):
         sample_images = [sample_images[i:i+self.batch_size]
                          for i in range(0, len(sample_images), self.batch_size)]
         sample_images = np.array(sample_images)
-        print(sample_images.shape)
 
-        start_time = time.time()
         if self.load(self.checkpoint_dir):
             print(" [*] Load SUCCESS")
         else:
@@ -455,15 +458,15 @@ class pix2pix(object):
         for i, sample_image in enumerate(sample_images):
             idx = i+1
             print("sampling image ", idx)
-            samples, l1_loss, pixel_acc = self.sess.run(
-                [self.fake_B_sample, self.l1_loss, self.pixel_acc],
+            samples, l1_loss, pixel_acc, sample_threshold = self.sess.run(
+                [self.fake_B_sample, self.l1_loss, self.pixel_acc, self.fake_threshold],
                 feed_dict={self.real_data: sample_image}
             )
             l1_loss_sum += l1_loss
             pixel_acc_sum += pixel_acc
             if self.batch_size==1:
                 path = './{}/{}'.format(args.test_dir, os.path.basename(sample_files[i].replace('.jpg','.png')))
-                self.evaluate(sample_image, samples, self.which_direction, self.input_c_dim, self.output_c_dim, path)
+                self.evaluate(sample_image, samples, sample_threshold, self.which_direction, self.input_c_dim, self.output_c_dim, path)
             else:
                 path = './{}/test_{:04d}.png'.format(args.test_dir, idx)
             save_images(samples, [self.batch_size, 1], path)

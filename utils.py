@@ -64,7 +64,7 @@ def myresize(img, dims, aspect, pad_to_white, interp):
         if len(img.shape)==3:
             vals.append((0,0))
         img = np.pad(img, vals, 'constant', constant_values=255 if pad_to_white else 0)
-    return scipy.misc.imresize(img, dims, interp) # accepts (x,y) or (x,y,3) image sizes
+    return scipy.misc.imresize(img, dims, interp=interp) # accepts (x,y) or (x,y,3) image sizes
 
 def gcn_norm(img):
     minimum = np.min(img, axis=(0,1), keepdims=True)
@@ -94,8 +94,8 @@ def preprocess_A_and_B(img_A, img_B, load_size=286, fine_size=256, aspect=False,
         img_A = myresize(img_A, [load_size, load_size], aspect, pad_to_white, interp_A)
         img_B = myresize(img_B, [load_size, load_size], aspect, pad_to_white, interp_B)
 
-        h1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
-        w1 = int(np.ceil(np.random.uniform(1e-2, load_size-fine_size)))
+        h1 = np.random.randint(load_size-fine_size+1)
+        w1 = np.random.randint(load_size-fine_size+1)
         img_A = img_A[h1:h1+fine_size, w1:w1+fine_size]
         img_B = img_B[h1:h1+fine_size, w1:w1+fine_size]
 
