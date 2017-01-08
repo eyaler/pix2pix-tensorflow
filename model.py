@@ -103,7 +103,7 @@ class pix2pix(object):
         self.d__sum = tf.summary.histogram("d_", self.D_)
         self.fake_B_sum = tf.summary.image("fake_B", self.fake_B)
 
-        self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
+        self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, 0.9*tf.ones_like(self.D)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
 
         fake_argmin = tf.select(tf.reduce_min(self.fake_B_sample, axis=3) < self.acc_threshold*2-1, tf.argmin(self.fake_B_sample, axis=3), -tf.ones(shape=tf.shape(self.real_B)[:-1], dtype=tf.int64))
